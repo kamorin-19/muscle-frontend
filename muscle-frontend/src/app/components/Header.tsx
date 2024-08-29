@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react';
 import { CustomMenu } from './Menu'; 
 
-export const Header = ({ children : any}) => {    
+export const Header = () => {    
     return (
         <Box px={4} bgColor="gray.100">
             <Container maxW="container.lg">

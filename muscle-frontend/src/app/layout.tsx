@@ -1,4 +1,5 @@
 // app/layout.tsx
+import { ReactNode } from 'react';
 import { ChakraProvider, Box } from '@chakra-ui/react';
 import { Header } from './components/Header';
 
@@ -7,7 +8,11 @@ export const metadata = {
   description: '筋トレ記録アプリケーション',
 };
 
-export default function RootLayout({ children }) {
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ja">
       <body>
