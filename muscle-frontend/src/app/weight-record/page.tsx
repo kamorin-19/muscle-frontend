@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 
 // DailyWeight型の定義
 interface DailyWeight {
@@ -13,6 +30,10 @@ interface DailyWeight {
 export default function WeightRecordPage() {
   // useStateでdataを管理
   const [data, setData] = useState<DailyWeight[]>([]);
+  // useStateで選択したdataを管理
+  const [selectedDailyWeight, setSelectedDailyWeight] = useState<DailyWeight | null>(null);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
     // データを取得する関数
@@ -54,26 +75,57 @@ export default function WeightRecordPage() {
     fetchData();
   }, []);
 
+  // 行をクリックしたときに呼ばれる関数
+  const handleRowClick = (dailyWeight: DailyWeight) => {
+    setSelectedDailyWeight(dailyWeight); // 選択した行のデータを設定
+    onOpen(); // モーダルを開く
+  };
+
+
   return (
-    <TableContainer>
-      <Table variant="simple">
-        <Thead>
-          <Tr>
-            <Th>id</Th>
-            <Th>recordedDay</Th>
-            <Th>weight</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {data.map((item) => (
-            <Tr key={item.id}>
-              <Td>{item.id}</Td>
-              <Td>{item.recordedDay.toDateString()}</Td>
-              <Td>{item.weight}</Td>
+    <>
+      <TableContainer>
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>id</Th>
+              <Th>recordedDay</Th>
+              <Th>weight</Th>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+          </Thead>
+          <Tbody>
+            {data.map((item) => (
+              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.id}</Td>
+                <Td>{item.recordedDay.toDateString()}</Td>
+                <Td>{item.weight}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      {/* モーダル */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>選択した体重の詳細</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {selectedDailyWeight && (
+              <>
+                <p><strong>ID:</strong> {selectedDailyWeight.id}</p>
+                <p><strong>RecordedDay:</strong> {selectedDailyWeight.recordedDay.toDateString()}</p>
+                <p><strong>Weight:</strong> {selectedDailyWeight.weight}</p>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={onClose}>
+              閉じる
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
