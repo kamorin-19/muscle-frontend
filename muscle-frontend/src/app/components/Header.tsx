@@ -1,20 +1,20 @@
-import {
-    Box,
-    Flex,
-    Container,
-    Heading,
-} from '@chakra-ui/react';
-import { CustomMenu } from './Menu'; 
+import { Box, Container, Flex, Heading, Spacer } from '@chakra-ui/react';
+import { CustomMenu } from './Menu';
 
-export const Header = () => {    
+export const Header = () => {
     return (
-        <Box px={4} bgColor="gray.100">
-            <Container maxW="container.lg">
-                <Flex as="header" py="4" justifyContent="space-between" alignItems="center">
-                <CustomMenu />
-                <Heading size="md">筋トレアプリ</Heading>
+        <Box bgColor="gray.100" px={0}>
+            <Flex as="header" py="4" alignItems="center" position="relative">
+                {/* メニューを左寄せする */}
+                <Box position="absolute" left={4}> {/* メニューを絶対位置で左に固定 */}
+                    <CustomMenu />
+                </Box>
+
+                {/* 画面中央にHeadingを配置する */}
+                <Flex flexGrow={1} justifyContent="center">
+                    <Heading size="md" textAlign="center">筋トレアプリ</Heading>
                 </Flex>
-            </Container>
+            </Flex>
         </Box>
     );
-}
+};
