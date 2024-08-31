@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Table,
   Thead,
@@ -18,12 +18,14 @@ import {
   ModalCloseButton,
   Button,
   useDisclosure,
+  Input
 } from '@chakra-ui/react';
+import { on } from 'events';
 
 // BodyPart型の定義
 interface BodyPart {
-  id: number;
-  name: string;
+  BodyPartId: number;
+  Name: string;
 }
 
 export default function BodyPartMasterPage() {
@@ -32,6 +34,8 @@ export default function BodyPartMasterPage() {
   const [data, setData] = useState<BodyPart[]>([]);
   // useStateで選択したdataを管理
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
+  // 作成か更新かを管理するstate
+  const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -43,8 +47,8 @@ export default function BodyPartMasterPage() {
 
         // APIレスポンスからidとnameを抽出してセット
         const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-          id: item.bodyPartId,
-          name: item.name,
+          BodyPartId: item.bodyPartId,
+          Name: item.name,
         }));
 
         setData(formattedData); // useStateのセッター関数を使用してdataを更新
@@ -57,10 +61,44 @@ export default function BodyPartMasterPage() {
   }, []);
 
   // 行をクリックしたときに呼ばれる関数
-  const handleRowClick = (bodyPart: BodyPart) => {
-    setSelectedBodyPart(bodyPart); // 選択した行のデータを設定
-    onOpen(); // モーダルを開く
-  };
+  const handleRowClick = useCallback((bodyPart: BodyPart | null = null) => {
+    // 選択した行のデータを設定
+    setSelectedBodyPart(bodyPart);
+    // 作成か更新かを設定
+    setIsNewRecord(!bodyPart);
+    // モーダルを開く
+    onOpen();
+  }, [onOpen]);
+
+  // マスタ作成のリクエストを投げる
+  const createBodyPart = useCallback(async () => {
+    try {
+      await fetch('https://localhost:7253/BodyPart/AddBodyParts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedBodyPart),
+      });
+    } catch (error) {
+      console.error('データの作成に失敗しました', error);
+    }
+  }, [selectedBodyPart]);
+
+  // マスタ作成のリクエストを投げる
+  const updateBodyPart = useCallback(async () => {
+    try {
+      await fetch('https://localhost:7253/BodyPart/UpdateBodyParts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedBodyPart),
+      });
+    } catch (error) {
+      console.error('データの作成に失敗しました', error);
+    }
+  }, [selectedBodyPart]);
 
   return (
     <>
@@ -68,36 +106,48 @@ export default function BodyPartMasterPage() {
         <Table variant="simple">
           <Thead>
             <Tr>
-              <Th>ID</Th>
-              <Th>Name</Th>
+              <Th>部位名</Th>
             </Tr>
           </Thead>
           <Tbody>
             {data.map((item) => (
-              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
-                <Td>{item.id}</Td>
-                <Td>{item.name}</Td>
+              <Tr key={item.BodyPartId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.Name}</Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
+        <Button mt={4} colorScheme="teal" onClick={() => handleRowClick()} style={{ cursor: 'pointer' }}>
+          追加
+        </Button>
       </TableContainer>
 
       {/* モーダル */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>選択したボディパーツの詳細</ModalHeader>
+          <ModalHeader>{isNewRecord ? '部位マスタ作成' : '部位マスタ更新'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            {selectedBodyPart && (
-              <>
-                <p><strong>ID:</strong> {selectedBodyPart.id}</p>
-                <p><strong>Name:</strong> {selectedBodyPart.name}</p>
-              </>
-            )}
+            {/* selectedBodyPartが設定されている場合はそのnameを表示し、そうでなければnullを表示する */}
+            <Input
+              placeholder="Body Part Name"
+              value={selectedBodyPart ? selectedBodyPart.Name : ''}
+              onChange={(e) => {
+                // selectedBodyPartがnullでない場合はそのnameを更新
+                if (selectedBodyPart) {
+                  setSelectedBodyPart({ ...selectedBodyPart, Name: e.target.value });
+                } else {
+                  // nullの場合、IDに0を設定して新しいオブジェクトを作成
+                  setSelectedBodyPart({ BodyPartId: 0, Name: e.target.value });
+                }
+              }}
+            />
           </ModalBody>
           <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createBodyPart() : updateBodyPart() }}>
+              {isNewRecord ? '作成' : '更新'}
+            </Button>
             <Button colorScheme="blue" mr={3} onClick={onClose}>
               閉じる
             </Button>
