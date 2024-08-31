@@ -100,7 +100,7 @@ export default function ExerciseMasterPage() {
           </Thead>
           <Tbody>
             {data.map((item) => (
-              <Tr key={item.id}　onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
                 <Td>{item.id}</Td>
                 <Td>{item.name}</Td>
                 <Td>{item.weight}</Td>
