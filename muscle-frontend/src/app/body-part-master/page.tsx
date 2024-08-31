@@ -85,10 +85,25 @@ export default function BodyPartMasterPage() {
     }
   }, [selectedBodyPart]);
 
-  // マスタ作成のリクエストを投げる
+  // マスタ更新のリクエストを投げる
   const updateBodyPart = useCallback(async () => {
     try {
       await fetch('https://localhost:7253/BodyPart/UpdateBodyParts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedBodyPart),
+      });
+    } catch (error) {
+      console.error('データの作成に失敗しました', error);
+    }
+  }, [selectedBodyPart]);
+
+  // マスタ削除のリクエストを投げる
+  const deleteBodyPart = useCallback(async () => {
+    try {
+      await fetch('https://localhost:7253/BodyPart/DeleteBodyParts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,6 +163,11 @@ export default function BodyPartMasterPage() {
             <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createBodyPart() : updateBodyPart() }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
+            {isNewRecord ? null :
+              <Button colorScheme="blue" mr={3} onClick={() => { deleteBodyPart() }}>
+                削除
+              </Button>
+            }
             <Button colorScheme="blue" mr={3} onClick={onClose}>
               閉じる
             </Button>
