@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 
 // Exercise型の定義
 interface Exercise {
@@ -15,6 +32,10 @@ export default function ExerciseMasterPage() {
 
   // useStateでdataを管理
   const [data, setData] = useState<Exercise[]>([]);
+  // useStateで選択したdataを管理
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
     // データを取得する関数
@@ -59,28 +80,60 @@ export default function ExerciseMasterPage() {
     fetchData();
   }, []);
 
+  // 行をクリックしたときに呼ばれる関数
+  const handleRowClick = (exercise: Exercise) => {
+    setSelectedExercise(exercise); // 選択した行のデータを設定
+    onOpen(); // モーダルを開く
+  };
+
   return (
-    <TableContainer>
-      <Table variant="simple">
-        <Thead>
-          <Tr>
-            <Th>ID</Th>
-            <Th>Name</Th>
-            <Th>Weight</Th>
-            <Th>BodyPartNamee</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {data.map((item) => (
-            <Tr key={item.id}>
-              <Td>{item.id}</Td>
-              <Td>{item.name}</Td>
-              <Td>{item.weight}</Td>
-              <Td>{item.bodyPartName}</Td>
+    <>
+      <TableContainer>
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>ID</Th>
+              <Th>Name</Th>
+              <Th>Weight</Th>
+              <Th>BodyPartNamee</Th>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+          </Thead>
+          <Tbody>
+            {data.map((item) => (
+              <Tr key={item.id}　onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.id}</Td>
+                <Td>{item.name}</Td>
+                <Td>{item.weight}</Td>
+                <Td>{item.bodyPartName}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+
+      {/* モーダル */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>選択した種目の詳細</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {selectedExercise && (
+              <>
+                <p><strong>ID:</strong> {selectedExercise.id}</p>
+                <p><strong>Name:</strong> {selectedExercise.name}</p>
+                <p><strong>Weight:</strong> {selectedExercise.weight}</p>
+                <p><strong>BodyPartNamee:</strong> {selectedExercise.bodyPartName}</p>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={onClose}>
+              閉じる
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
