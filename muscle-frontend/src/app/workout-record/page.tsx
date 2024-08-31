@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 
 // WorkoutRecord型の定義
 interface DailyRecord {
@@ -17,6 +34,10 @@ export default function WorkoutRecordPage() {
 
   // useStateでdataを管理
   const [data, setData] = useState<DailyRecord[]>([]);
+  // useStateで選択したdataを管理
+  const [selectedDailyRecord, setSelectedDailyRecord] = useState<DailyRecord | null>(null);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
     // データを取得する関数
@@ -67,32 +88,65 @@ export default function WorkoutRecordPage() {
     fetchData();
   }, []);
 
+  // 行をクリックしたときに呼ばれる関数
+  const handleRowClick = (dailyRecord: DailyRecord) => {
+    setSelectedDailyRecord(dailyRecord); // 選択した行のデータを設定
+    onOpen(); // モーダルを開く
+  };
+
   return (
-    <TableContainer>
-      <Table variant="simple">
-        <Thead>
-          <Tr>
-            <Th>id</Th>
-            <Th>enforcementDay</Th>
-            <Th>exerciseName</Th>
-            <Th>firstSetCount</Th>
-            <Th>secondSetCount</Th>
-            <Th>thirdSetCount</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {data.map((item) => (
-            <Tr key={item.id}>
-              <Td>{item.id}</Td>
-              <Td>{item.enforcementDay.toDateString()}</Td>
-              <Td>{item.exerciseName}</Td>
-              <Td>{item.firstSetCount}</Td>
-              <Td>{item.secondSetCount}</Td>
-              <Td>{item.thirdSetCount}</Td>
+    <>
+      <TableContainer>
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>id</Th>
+              <Th>enforcementDay</Th>
+              <Th>exerciseName</Th>
+              <Th>firstSetCount</Th>
+              <Th>secondSetCount</Th>
+              <Th>thirdSetCount</Th>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+          </Thead>
+          <Tbody>
+            {data.map((item) => (
+              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.id}</Td>
+                <Td>{item.enforcementDay.toDateString()}</Td>
+                <Td>{item.exerciseName}</Td>
+                <Td>{item.firstSetCount}</Td>
+                <Td>{item.secondSetCount}</Td>
+                <Td>{item.thirdSetCount}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      {/* モーダル */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>選択した日々記録の詳細</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {selectedDailyRecord && (
+              <>
+                <p><strong>ID:</strong> {selectedDailyRecord.id}</p>
+                <p><strong>EnforcementDay:</strong> {selectedDailyRecord.enforcementDay.toDateString()}</p>
+                <p><strong>ExerciseName:</strong> {selectedDailyRecord.exerciseName}</p>
+                <p><strong>FirstSetCount:</strong> {selectedDailyRecord.id}</p>
+                <p><strong>SecondSetCount:</strong> {selectedDailyRecord.secondSetCount}</p>
+                <p><strong>ThirdSetCount:</strong> {selectedDailyRecord.thirdSetCount}</p>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={onClose}>
+              閉じる
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
