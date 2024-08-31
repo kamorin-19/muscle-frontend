@@ -14,6 +14,7 @@ export const CustomMenu = () => {
         <MenuItem as={Link} href="/weight-record">体重記録</MenuItem>
         <MenuItem as={Link} href="/exercise-master">種目マスタ</MenuItem>
         <MenuItem as={Link} href="/body-part-master">部位マスタ</MenuItem>
+        <MenuItem as={Link} href="/import-csv">CSV取込</MenuItem>
       </MenuList>
     </Menu>
   );
