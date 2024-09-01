@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
   Table,
   Thead,
   Tbody,
@@ -36,13 +42,30 @@ export default function BodyPartMasterPage() {
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
   // 作成か更新かを管理するstate
   const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
+  // エラーメッセージを管理するstate
+  const [errorMessage, setErrorMessage] = useState('');
 
+  // 詳細モーダルを管理
   const { isOpen, onOpen, onClose } = useDisclosure();
+  // エラーモーダルを管理
+  const { isOpen: isDialogOpen, onOpen: openDialog, onClose: closeDialog } = useDisclosure();
+
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+
+        // サーバーがエラーを返した場合は、ここでエラーチェック
+        if (!response.ok) {
+          // サーバーのエラーメッセージを取得
+          const errorMessage = await response.text();
+          // 新たなエラーを投げる
+          throw new Error(errorMessage);
+        }
         const result = await response.json();
 
         // APIレスポンスからidとnameを抽出してセット
@@ -52,8 +75,9 @@ export default function BodyPartMasterPage() {
         }));
 
         setData(formattedData); // useStateのセッター関数を使用してdataを更新
-      } catch (error) {
-        console.error('データの取得に失敗しました', error);
+      } catch (error: any) {
+        setErrorMessage(error.message);
+        openDialog();
       }
     };
 
@@ -73,45 +97,159 @@ export default function BodyPartMasterPage() {
   // マスタ作成のリクエストを投げる
   const createBodyPart = useCallback(async () => {
     try {
-      await fetch('https://localhost:7253/BodyPart/AddBodyParts', {
+      const response = await fetch('https://localhost:7253/BodyPart/AddBodyParts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(selectedBodyPart),
       });
-    } catch (error) {
-      console.error('データの作成に失敗しました', error);
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
+              BodyPartId: item.bodyPartId,
+              Name: item.name,
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
     }
   }, [selectedBodyPart]);
 
   // マスタ更新のリクエストを投げる
   const updateBodyPart = useCallback(async () => {
     try {
-      await fetch('https://localhost:7253/BodyPart/UpdateBodyParts', {
+      const response = await fetch('https://localhost:7253/BodyPart/UpdateBodyParts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(selectedBodyPart),
       });
-    } catch (error) {
-      console.error('データの作成に失敗しました', error);
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
+              BodyPartId: item.bodyPartId,
+              Name: item.name,
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
     }
   }, [selectedBodyPart]);
 
   // マスタ削除のリクエストを投げる
   const deleteBodyPart = useCallback(async () => {
     try {
-      await fetch('https://localhost:7253/BodyPart/DeleteBodyParts', {
+      const response = await fetch('https://localhost:7253/BodyPart/DeleteBodyParts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(selectedBodyPart),
       });
-    } catch (error) {
-      console.error('データの作成に失敗しました', error);
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
+              BodyPartId: item.bodyPartId,
+              Name: item.name,
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
     }
   }, [selectedBodyPart]);
 
@@ -174,6 +312,31 @@ export default function BodyPartMasterPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* エラーモーダル */}
+      <AlertDialog
+        isOpen={isDialogOpen} // 変更された変数名を使用
+        leastDestructiveRef={cancelRef}
+        onClose={closeDialog} // 変更された変数名を使用
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              エラー
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              {errorMessage}
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={closeDialog}> {/* 変更された変数名を使用 */}
+                閉じる
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </>
   );
 }
