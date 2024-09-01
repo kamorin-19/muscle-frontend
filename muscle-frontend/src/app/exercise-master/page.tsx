@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Table,
   Thead,
@@ -22,10 +22,16 @@ import {
 
 // Exercise型の定義
 interface Exercise {
-  id: number;
-  name: string;
-  weight: number;
-  bodyPartName: string;
+  ExercisePId: number;
+  Name: string;
+  Weight: number;
+  BodyPartName: string;
+}
+
+// BodyPart型の定義
+interface BodyPart {
+  BodyPartId: number;
+  Name: string;
 }
 
 export default function ExerciseMasterPage() {
@@ -34,42 +40,40 @@ export default function ExerciseMasterPage() {
   const [data, setData] = useState<Exercise[]>([]);
   // useStateで選択したdataを管理
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  // 作成か更新かを管理するstate
+  const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
+  // エラーメッセージを管理するstate
+  const [errorMessage, setErrorMessage] = useState('');
 
+  // 詳細モーダルを管理
   const { isOpen, onOpen, onClose } = useDisclosure();
+  // エラーモーダルを管理
+  const { isOpen: isDialogOpen, onOpen: openDialog, onClose: closeDialog } = useDisclosure();
+
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // データを取得する関数
     const fetchData = async () => {
       try {
-        //const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-        //const result = await response.json();
+        const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+
+        // サーバーがエラーを返した場合は、ここでエラーチェック
+        if (!response.ok) {
+          // サーバーのエラーメッセージを取得
+          const errorMessage = await response.text();
+          // 新たなエラーを投げる
+          throw new Error(errorMessage);
+        }
+        const result = await response.json();
 
         // APIレスポンスからidとnameを抽出してセット
-        // const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-        //   id: item.bodyPartId,
-        //   name: item.name,
-        // }));
-
-        const formattedData = [
-          {
-            id: 1,
-            name: 'バーベルスクワット',
-            weight: 0.2,
-            bodyPartName: '脚'
-          },
-          {
-            id: 2,
-            name: 'ブルガリアンスクワット',
-            weight: 0.4,
-            bodyPartName: '脚'
-          },
-          {
-            id: 3,
-            name: 'ダンベルプレス',
-            weight: 0.4,
-            bodyPartName: '胸'
-          },
-        ];
+        const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: { name: string } }) => ({
+          ExercisePId: item.exercisePId,
+          Name: item.name,
+          Weight: item.weight,
+          BodyPartName: item.bodyPart?.name || ''
+        }));
 
         setData(formattedData); // useStateのセッター関数を使用してdataを更新
       } catch (error) {
@@ -92,19 +96,17 @@ export default function ExerciseMasterPage() {
         <Table variant="simple">
           <Thead>
             <Tr>
-              <Th>ID</Th>
-              <Th>Name</Th>
-              <Th>Weight</Th>
-              <Th>BodyPartNamee</Th>
+              <Th>種目名</Th>
+              <Th>重み</Th>
+              <Th>部位名</Th>
             </Tr>
           </Thead>
           <Tbody>
             {data.map((item) => (
-              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
-                <Td>{item.id}</Td>
-                <Td>{item.name}</Td>
-                <Td>{item.weight}</Td>
-                <Td>{item.bodyPartName}</Td>
+              <Tr key={item.ExercisePId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.Name}</Td>
+                <Td>{item.Weight}</Td>
+                <Td>{item.BodyPartName}</Td>
               </Tr>
             ))}
           </Tbody>
