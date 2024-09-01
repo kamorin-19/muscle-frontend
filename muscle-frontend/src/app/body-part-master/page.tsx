@@ -26,7 +26,6 @@ import {
   useDisclosure,
   Input
 } from '@chakra-ui/react';
-import { on } from 'events';
 
 // BodyPart型の定義
 interface BodyPart {
