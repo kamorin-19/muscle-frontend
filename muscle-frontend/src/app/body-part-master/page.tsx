@@ -51,8 +51,6 @@ export default function BodyPartMasterPage() {
 
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-
-
   useEffect(() => {
     const fetchData = async () => {
       try {
