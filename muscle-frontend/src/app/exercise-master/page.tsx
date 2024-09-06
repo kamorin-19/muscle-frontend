@@ -28,6 +28,7 @@ interface Exercise {
   Name: string;
   Weight: number;
   BodyPartName: string;
+  BodyPart: BodyPart;
 }
 
 // BodyPart型の定義
@@ -41,7 +42,7 @@ export default function ExerciseMasterPage() {
   // useStateでdataを管理
   const [data, setData] = useState<Exercise[]>([]);
   // useStateでbodyPartsを管理
-  const [bodyParts, setBodyParts] = useState<BodyPart[]>([]);
+  const [selectedBodyParts, setSelectedBodyParts] = useState<BodyPart[]>([]);
   // useStateで選択したdataを管理
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   // 作成か更新かを管理するstate
@@ -72,11 +73,12 @@ export default function ExerciseMasterPage() {
         const result = await response.json();
 
         // APIレスポンスからidとnameを抽出してセット
-        const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: { name: string } }) => ({
+        const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
           ExercisePId: item.exercisePId,
           Name: item.name,
           Weight: item.weight,
-          BodyPartName: item.bodyPart?.name || ''
+          BodyPartName: item.bodyPart?.Name || '',
+          BodyPart: item.bodyPart
         }));
 
         setData(formattedData); // useStateのセッター関数を使用してdataを更新
@@ -115,7 +117,7 @@ export default function ExerciseMasterPage() {
         BodyPartId: item.bodyPartId,
         Name: item.name,
       }));
-      setBodyParts(formattedData);
+      setSelectedBodyParts(formattedData);
     } catch (error) {
       console.error('BodyPartデータの取得に失敗しました', error);
     }
@@ -134,6 +136,7 @@ export default function ExerciseMasterPage() {
         Name: e.target.value,
         Weight: 0,
         BodyPartName: '',
+        BodyPart: { BodyPartId: 0, Name: '' }
       });
     }
   };
@@ -151,6 +154,7 @@ export default function ExerciseMasterPage() {
         Name: '',
         Weight: Number(e.target.value),
         BodyPartName: '',
+        BodyPart: { BodyPartId: 0, Name: '' }
       });
     }
   };
@@ -167,7 +171,8 @@ export default function ExerciseMasterPage() {
         ExercisePId: 0,
         Name: '',
         Weight: 0,
-        BodyPartName: e.target.value
+        BodyPartName: e.target.value,
+        BodyPart: { BodyPartId: 0, Name: '' }
       });
     }
   };
@@ -180,7 +185,7 @@ export default function ExerciseMasterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(selectedBodyPart),
+        body: JSON.stringify(selectedBodyParts),
       });
 
       // サーバーがエラーを返した場合は、ここでエラーチェック
@@ -209,6 +214,61 @@ export default function ExerciseMasterPage() {
               Name: item.name,
             }));
 
+            setSelectedBodyParts(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedBodyParts]);
+
+  // マスタ削除のリクエストを投げる
+  const deleteExercise = useCallback(async () => {
+    try {
+      const response = await fetch('https://localhost:7253/Exercise/DeleteExercise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedExercise),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: { name: string } }) => ({
+              ExercisePId: item.exercisePId,
+              Name: item.name,
+              Weight: item.weight,
+              BodyPartName: item.bodyPart?.name || ''
+            }));
+
             setData(formattedData); // useStateのセッター関数を使用してdataを更新
             onClose();
           } catch (error: any) {
@@ -223,7 +283,7 @@ export default function ExerciseMasterPage() {
       setErrorMessage(error.message);
       openDialog();
     }
-  }, [selectedBodyPart]);
+  }, [selectedExercise]);
 
   return (
     <>
@@ -276,8 +336,8 @@ export default function ExerciseMasterPage() {
               value={selectedExercise?.BodyPartName || ''}
               onChange={handleBodyPartChange}
             >
-              {bodyParts.length > 0 ? (
-                bodyParts.map((part) => (
+              {selectedBodyParts.length > 0 ? (
+                selectedBodyParts.map((part) => (
                   <option key={part.BodyPartId} value={part.Name}>
                     {part.Name}
                   </option>
@@ -292,7 +352,7 @@ export default function ExerciseMasterPage() {
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
-              <Button colorScheme="blue" mr={3} onClick={() => { console.log(1) }}>
+              <Button colorScheme="blue" mr={3} onClick={() => { deleteExercise() }}>
                 削除
               </Button>
             }
