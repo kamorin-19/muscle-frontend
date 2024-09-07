@@ -2,6 +2,12 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
   Table,
   Thead,
   Tbody,
@@ -195,12 +201,12 @@ export default function ExerciseMasterPage() {
   // マスタ作成のリクエストを投げる
   const createExcercise = useCallback(async () => {
     try {
-      const response = await fetch('https://localhost:7253/BodyPart/Exercise', {
+      const response = await fetch('https://localhost:7253/Exercise/AddExercise', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(bodyParts),
+        body: JSON.stringify(selectedExercise),
       });
 
       // サーバーがエラーを返した場合は、ここでエラーチェック
@@ -212,7 +218,7 @@ export default function ExerciseMasterPage() {
       } else {
         const fetchData = async () => {
           try {
-            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
 
             // サーバーがエラーを返した場合は、ここでエラーチェック
             if (!response.ok) {
@@ -224,11 +230,15 @@ export default function ExerciseMasterPage() {
             const result = await response.json();
 
             // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-              bodyPartId: item.bodyPartId,
-              name: item.name,
+            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
+              ExercisePId: item.exercisePId,
+              Name: item.name,
+              Weight: item.weight,
+              BodyPartName: item.bodyPart?.name || '',
+              BodyPart: item.bodyPart
             }));
 
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
             onClose();
           } catch (error: any) {
             setErrorMessage(error.message);
@@ -242,7 +252,7 @@ export default function ExerciseMasterPage() {
       setErrorMessage(error.message);
       openDialog();
     }
-  }, [bodyParts]);
+  }, [selectedExercise]);
 
   // マスタ更新のリクエストを投げる
   const updateExercise = useCallback(async () => {
@@ -418,7 +428,7 @@ export default function ExerciseMasterPage() {
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? console.log(1) : updateExercise() }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createExcercise() : updateExercise() }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
@@ -432,6 +442,31 @@ export default function ExerciseMasterPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* エラーモーダル */}
+      <AlertDialog
+        isOpen={isDialogOpen} // 変更された変数名を使用
+        leastDestructiveRef={cancelRef}
+        onClose={closeDialog} // 変更された変数名を使用
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              エラー
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              {errorMessage}
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={closeDialog}> {/* 変更された変数名を使用 */}
+                閉じる
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </>
   );
 }
