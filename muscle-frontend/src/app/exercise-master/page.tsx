@@ -33,8 +33,8 @@ interface Exercise {
 
 // BodyPart型の定義
 interface BodyPart {
-  BodyPartId: number;
-  Name: string;
+  bodyPartId: number;
+  name: string;
 }
 
 export default function ExerciseMasterPage() {
@@ -42,9 +42,11 @@ export default function ExerciseMasterPage() {
   // useStateでdataを管理
   const [data, setData] = useState<Exercise[]>([]);
   // useStateでbodyPartsを管理
-  const [selectedBodyParts, setSelectedBodyParts] = useState<BodyPart[]>([]);
+  const [bodyParts, setBodyParts] = useState<BodyPart[]>([]);
   // useStateで選択したdataを管理
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  // useStateで選択したdataを管理
+  const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
   // 作成か更新かを管理するstate
   const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
   // エラーメッセージを管理するstate
@@ -77,7 +79,7 @@ export default function ExerciseMasterPage() {
           ExercisePId: item.exercisePId,
           Name: item.name,
           Weight: item.weight,
-          BodyPartName: item.bodyPart?.Name || '',
+          BodyPartName: item.bodyPart?.name || '',
           BodyPart: item.bodyPart
         }));
 
@@ -98,6 +100,13 @@ export default function ExerciseMasterPage() {
     setSelectedExercise(exercise);
     // 作成か更新かを設定
     setIsNewRecord(!exercise);
+    if (exercise) {
+      const bodyPart = {
+        bodyPartId: exercise?.BodyPart?.bodyPartId,
+        name: exercise?.BodyPartName || ''
+      };
+      setSelectedBodyPart(bodyPart)
+    }
     onOpen(); // モーダルを開く
   };
 
@@ -114,10 +123,10 @@ export default function ExerciseMasterPage() {
 
       // APIレスポンスからidとnameを抽出してセット
       const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-        BodyPartId: item.bodyPartId,
-        Name: item.name,
+        bodyPartId: item.bodyPartId,
+        name: item.name,
       }));
-      setSelectedBodyParts(formattedData);
+      setBodyParts(formattedData);
     } catch (error) {
       console.error('BodyPartデータの取得に失敗しました', error);
     }
@@ -136,7 +145,7 @@ export default function ExerciseMasterPage() {
         Name: e.target.value,
         Weight: 0,
         BodyPartName: '',
-        BodyPart: { BodyPartId: 0, Name: '' }
+        BodyPart: { bodyPartId: 0, name: '' }
       });
     }
   };
@@ -154,25 +163,31 @@ export default function ExerciseMasterPage() {
         Name: '',
         Weight: Number(e.target.value),
         BodyPartName: '',
-        BodyPart: { BodyPartId: 0, Name: '' }
+        BodyPart: { bodyPartId: 0, name: '' }
       });
     }
   };
 
   // BodyPartの選択を処理する関数
   const handleBodyPartChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // 選択されたBodyPartのidを取得
+    const selectedBodyPartId = Number(e.target.value);
+    // 選択されたBodyPartのnameを取得
+    const selectedBodyPartName = bodyParts.find(part => part.bodyPartId === selectedBodyPartId)?.name || '';
     if (selectedExercise) {
+      console.log(1)
+      console.log(e.target.value)
       setSelectedExercise({
         ...selectedExercise,
-        BodyPartName: e.target.value,
+        BodyPart: { bodyPartId: selectedBodyPartId, name: selectedBodyPartName }
       });
     } else {
       setSelectedExercise({
         ExercisePId: 0,
         Name: '',
         Weight: 0,
-        BodyPartName: e.target.value,
-        BodyPart: { BodyPartId: 0, Name: '' }
+        BodyPartName: selectedBodyPartName,
+        BodyPart: { bodyPartId: selectedBodyPartId, name: selectedBodyPartName }
       });
     }
   };
@@ -185,7 +200,7 @@ export default function ExerciseMasterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(selectedBodyParts),
+        body: JSON.stringify(bodyParts),
       });
 
       // サーバーがエラーを返した場合は、ここでエラーチェック
@@ -210,11 +225,10 @@ export default function ExerciseMasterPage() {
 
             // APIレスポンスからidとnameを抽出してセット
             const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-              BodyPartId: item.bodyPartId,
-              Name: item.name,
+              bodyPartId: item.bodyPartId,
+              name: item.name,
             }));
 
-            setSelectedBodyParts(formattedData); // useStateのセッター関数を使用してdataを更新
             onClose();
           } catch (error: any) {
             setErrorMessage(error.message);
@@ -228,7 +242,63 @@ export default function ExerciseMasterPage() {
       setErrorMessage(error.message);
       openDialog();
     }
-  }, [selectedBodyParts]);
+  }, [bodyParts]);
+
+  // マスタ更新のリクエストを投げる
+  const updateExercise = useCallback(async () => {
+    try {
+      const response = await fetch('https://localhost:7253/Exercise/UpdateExercise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedExercise),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
+              ExercisePId: item.exercisePId,
+              Name: item.name,
+              Weight: item.weight,
+              BodyPartName: item.bodyPart?.name || '',
+              BodyPart: item.bodyPart
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedExercise]);
 
   // マスタ削除のリクエストを投げる
   const deleteExercise = useCallback(async () => {
@@ -336,10 +406,10 @@ export default function ExerciseMasterPage() {
               value={selectedExercise?.BodyPartName || ''}
               onChange={handleBodyPartChange}
             >
-              {selectedBodyParts.length > 0 ? (
-                selectedBodyParts.map((part) => (
-                  <option key={part.BodyPartId} value={part.Name}>
-                    {part.Name}
+              {bodyParts.length > 0 ? (
+                bodyParts.map((part) => (
+                  <option key={part.bodyPartId} value={part.bodyPartId}>
+                    {part.name}
                   </option>
                 ))
               ) : (
@@ -348,7 +418,7 @@ export default function ExerciseMasterPage() {
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? console.log(1) : console.log(1) }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? console.log(1) : updateExercise() }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
