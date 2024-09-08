@@ -57,32 +57,23 @@ export default function WeightRecordPage() {
     // データを取得する関数
     const fetchData = async () => {
       try {
-        //const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-        //const result = await response.json();
+        const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
+
+        // サーバーがエラーを返した場合は、ここでエラーチェック
+        if (!response.ok) {
+          // サーバーのエラーメッセージを取得
+          const errorMessage = await response.text();
+          // 新たなエラーを投げる
+          throw new Error(errorMessage);
+        }
+        const result = await response.json();
 
         // APIレスポンスからidとnameを抽出してセット
-        // const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-        //   id: item.bodyPartId,
-        //   name: item.name,
-        // }));
-
-        const formattedData: DailyWeight[] = [
-          {
-            DailyWeightId: 1,
-            RecordedDay: new Date('2024-08-30'),
-            Weight: 81.6,
-          },
-          {
-            DailyWeightId: 2,
-            RecordedDay: new Date('2024-08-29'),
-            Weight: 81.4,
-          },
-          {
-            DailyWeightId: 3,
-            RecordedDay: new Date('2024-08-29'),
-            Weight: 81.2,
-          },
-        ];
+        const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+          DailyWeightId: item.dailyWeightId,
+          RecordedDay: item.recordedDay,
+          Weight: item.weight,
+        }));
 
         setData(formattedData); // useStateのセッター関数を使用してdataを更新
       } catch (error) {
@@ -217,7 +208,7 @@ export default function WeightRecordPage() {
             {data.map((item) => (
               <Tr key={item.DailyWeightId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
                 <Td>{item.DailyWeightId}</Td>
-                <Td>{item.RecordedDay ? item.RecordedDay.toDateString() : 'No Date'}</Td>
+                <Td>{item.RecordedDay ? new Date(item.RecordedDay).toISOString().split('T')[0] : ''}</Td>       
                 <Td>{item.Weight}</Td>
               </Tr>
             ))}
