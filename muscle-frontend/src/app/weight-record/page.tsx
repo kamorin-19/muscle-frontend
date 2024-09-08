@@ -153,9 +153,10 @@ export default function WeightRecordPage() {
         // 新たなエラーを投げる
         throw new Error(errorMessage);
       } else {
-        /*const fetchData = async () => {
+        // データを取得する関数
+        const fetchData = async () => {
           try {
-            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+            const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
 
             // サーバーがエラーを返した場合は、ここでエラーチェック
             if (!response.ok) {
@@ -167,12 +168,10 @@ export default function WeightRecordPage() {
             const result = await response.json();
 
             // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
-              ExercisePId: item.exercisePId,
-              Name: item.name,
+            const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+              DailyWeightId: item.dailyWeightId,
+              RecordedDay: item.recordedDay,
               Weight: item.weight,
-              BodyPartName: item.bodyPart?.name || '',
-              BodyPart: item.bodyPart
             }));
 
             setData(formattedData); // useStateのセッター関数を使用してdataを更新
@@ -183,7 +182,70 @@ export default function WeightRecordPage() {
           }
         };
 
-        fetchData();*/
+        fetchData();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedDailyWeight]);
+
+  // マスタ更新のリクエストを投げる
+  const updateDailyWeight = useCallback(async () => {
+    try {
+      // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
+      const payload = {
+        DailyWeightId: selectedDailyWeight?.DailyWeightId,
+        Weight: selectedDailyWeight?.Weight,
+        RecordedDay: selectedDailyWeight?.RecordedDay
+          ? new Date(selectedDailyWeight.RecordedDay).toISOString().split('T')[0] // YYYY-MM-DD形式に変換
+          : null,
+      };
+      const response = await fetch('https://localhost:7253/DailyWeight/UpdateDailyWeight', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        // データを取得する関数
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+              DailyWeightId: item.dailyWeightId,
+              RecordedDay: item.recordedDay,
+              Weight: item.weight,
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
       }
     } catch (error: any) {
       setErrorMessage(error.message);
@@ -208,7 +270,7 @@ export default function WeightRecordPage() {
             {data.map((item) => (
               <Tr key={item.DailyWeightId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
                 <Td>{item.DailyWeightId}</Td>
-                <Td>{item.RecordedDay ? new Date(item.RecordedDay).toISOString().split('T')[0] : ''}</Td>       
+                <Td>{item.RecordedDay ? new Date(item.RecordedDay).toISOString().split('T')[0] : ''}</Td>
                 <Td>{item.Weight}</Td>
               </Tr>
             ))}
@@ -240,7 +302,7 @@ export default function WeightRecordPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createDailyWeight() : console.log(2) }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createDailyWeight() : updateDailyWeight() }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
