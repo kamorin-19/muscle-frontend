@@ -124,6 +124,9 @@ export default function WorkoutRecordPage() {
   const handleRowClick = async (dailyRecord: DailyRecord | null = null) => {
     // 種目マスタを取得
     await fetchExercises();
+    console.log("？");
+    console.log(dailyRecord);
+    console.log("？");
     // 選択した行のデータを設定
     setSelectedDailyRecord(dailyRecord);
     // 作成か更新かを設定
@@ -149,8 +152,6 @@ export default function WorkoutRecordPage() {
       }
       const result = await response.json();
 
-      console.log(result);
-
       // APIレスポンスからidとnameを抽出してセット
       const formattedData = result.map((item: { ExercisePId: number; Name: string; weight: number; BodyPart: BodyPart }) => ({
         ExercisePId: item.ExercisePId,
@@ -159,8 +160,6 @@ export default function WorkoutRecordPage() {
         BodyPartName: item.BodyPart?.Name || '',
         BodyPart: item.BodyPart
       }));
-
-      console.log(formattedData);
 
       setExercises(formattedData);
     } catch (error) {
@@ -241,7 +240,7 @@ export default function WorkoutRecordPage() {
         Exercise: null,
         ExercisePId: 1,
         EnforcementDay: null,
-        FirstSetCount: 1,
+        FirstSetCount: Number(e.target.value),
         SecondSetCount: 2,
         ThirdSetCount: 3,
         FourthSetCount: 4,
@@ -302,14 +301,12 @@ export default function WorkoutRecordPage() {
   const createDailyRecord = useCallback(async () => {
     try {
       // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
-      console.log(JSON.stringify(selectedDailyRecord))
       const payload = {
         ...selectedDailyRecord,
         EnforcementDay: selectedDailyRecord?.EnforcementDay
           ? new Date(selectedDailyRecord.EnforcementDay).toISOString().split('T')[0]
           : null,
       };
-      console.log(JSON.stringify(payload))
       const response = await fetch('https://localhost:7253/DailyRecord/AddDailyRecord', {
         method: 'POST',
         headers: {
@@ -354,6 +351,69 @@ export default function WorkoutRecordPage() {
           }
         };
 
+        fetchData();
+      }*/
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedDailyRecord]);
+
+  // 情報作成のリクエストを投げる
+  const updateDailyRecord = useCallback(async () => {
+    try {
+      // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
+      const payload = {
+        ...selectedDailyRecord,
+        EnforcementDay: selectedDailyRecord?.EnforcementDay
+          ? new Date(selectedDailyRecord.EnforcementDay).toISOString().split('T')[0]
+          : null,
+      };
+      console.log(JSON.stringify(payload));
+      const response = await fetch('https://localhost:7253/DailyRecord/UpdateDailyRecord', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      /*if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        // データを取得する関数
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
+ 
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+ 
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+              DailyWeightId: item.dailyWeightId,
+              RecordedDay: item.recordedDay,
+              Weight: item.weight,
+            }));
+ 
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+ 
         fetchData();
       }*/
     } catch (error: any) {
@@ -425,7 +485,7 @@ export default function WorkoutRecordPage() {
             <Input
               type="number"
               placeholder="FirstSetCount"
-              value={selectedDailyRecord ? selectedDailyRecord.FifthSetCount : 0}
+              value={selectedDailyRecord ? selectedDailyRecord.FirstSetCount : 0}
               onChange={handleFirstSetCountChange}
             />
             <br />
@@ -444,7 +504,7 @@ export default function WorkoutRecordPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createDailyRecord() : console.log(2) }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createDailyRecord() : updateDailyRecord() }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
