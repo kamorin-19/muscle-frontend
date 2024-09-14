@@ -359,7 +359,7 @@ export default function WorkoutRecordPage() {
     }
   }, [selectedDailyRecord]);
 
-  // 情報作成のリクエストを投げる
+  // 情報更新のリクエストを投げる
   const updateDailyRecord = useCallback(async () => {
     try {
       // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
@@ -371,6 +371,69 @@ export default function WorkoutRecordPage() {
       };
       console.log(JSON.stringify(payload));
       const response = await fetch('https://localhost:7253/DailyRecord/UpdateDailyRecord', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      /*if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        // データを取得する関数
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
+ 
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+ 
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+              DailyWeightId: item.dailyWeightId,
+              RecordedDay: item.recordedDay,
+              Weight: item.weight,
+            }));
+ 
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+ 
+        fetchData();
+      }*/
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedDailyRecord]);
+
+  // 情報削除のリクエストを投げる
+  const deleteDailyRecord = useCallback(async () => {
+    try {
+      // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
+      const payload = {
+        ...selectedDailyRecord,
+        EnforcementDay: selectedDailyRecord?.EnforcementDay
+          ? new Date(selectedDailyRecord.EnforcementDay).toISOString().split('T')[0]
+          : null,
+      };
+      console.log(JSON.stringify(payload));
+      const response = await fetch('https://localhost:7253/DailyRecord/DeleteDailyRecord', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -508,7 +571,7 @@ export default function WorkoutRecordPage() {
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
-              <Button colorScheme="blue" mr={3} onClick={() => { console.log(3) }}>
+              <Button colorScheme="blue" mr={3} onClick={() => { deleteDailyRecord() }}>
                 削除
               </Button>
             }
