@@ -21,6 +21,7 @@ import {
   Input,
   Select
 } from '@chakra-ui/react';
+import { it } from 'node:test';
 
 // WorkoutRecord型の定義
 interface DailyRecord {
@@ -76,49 +77,41 @@ export default function WorkoutRecordPage() {
     // データを取得する関数
     const fetchData = async () => {
       try {
-        //const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-        //const result = await response.json();
+        const response = await fetch('https://localhost:7253/DailyRecord/GetDailyRecord');
+
+        // サーバーがエラーを返した場合は、ここでエラーチェック
+        if (!response.ok) {
+          // サーバーのエラーメッセージを取得
+          const errorMessage = await response.text();
+          // 新たなエラーを投げる
+          throw new Error(errorMessage);
+        }
+        const result = await response.json();
 
         // APIレスポンスからidとnameを抽出してセット
-        // const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-        //   id: item.bodyPartId,
-        //   name: item.name,
-        // }));
+        const formattedData = result.map((item: {
+          DailyRecordId: number;
+          EnforcementDay: Date;
+          ExercisePId: number;
+          Exercise: Exercise;
+          FirstSetCount: number;
+          SecondSetCount: number;
+          ThirdSetCount: number;
+          FourthSetCount: number;
+          FifthSetCount: number;
+        }) => ({
+          DailyRecordId: item.DailyRecordId,
+          EnforcementDay: item.EnforcementDay,
+          ExercisePId: item.ExercisePId,
+          Exercise: item.Exercise,
+          FirstSetCount: item.FirstSetCount,
+          SecondSetCount: item.SecondSetCount,
+          ThirdSetCount: item.ThirdSetCount,
+          FourthSetCount: item.FourthSetCount,
+          FifthSetCount: item.FifthSetCount,
+        }));
 
-        /*const formattedData = [
-          {
-            DailyRecordId: 1,
-            EnforcementDay: new Date('2024-08-30'),
-            ExercisePId: 'バーベルスクワット',
-            FirstSetCount: 10,
-            SecondSetCount: 11,
-            ThirdSetCount: 12,
-            FourthSetCount: 13,
-            FifthSetCount: 14,
-          },
-          {
-            DailyRecordId: 2,
-            EnforcementDay: new Date('2024-08-30'),
-            ExercisePId: 'ブルガリアンスクワット',
-            FirstSetCount: 10,
-            SecondSetCount: 11,
-            ThirdSetCount: 12,
-            FourthSetCount: 13,
-            FifthSetCount: 14,
-          },
-          {
-            DailyRecordId: 3,
-            EnforcementDay: new Date('2024-08-30'),
-            ExercisePId: 'ダンベルプレス',
-            FirstSetCount: 10,
-            SecondSetCount: 11,
-            ThirdSetCount: 12,
-            FourthSetCount: 13,
-            FifthSetCount: 14,
-          },
-        ];
-
-        setData(formattedData); // useStateのセッター関数を使用してdataを更新*/
+        setData(formattedData);
       } catch (error) {
         console.error('データの取得に失敗しました', error);
       }
@@ -135,18 +128,10 @@ export default function WorkoutRecordPage() {
     setSelectedDailyRecord(dailyRecord);
     // 作成か更新かを設定
     setIsNewRecord(!dailyRecord);
-    /*if (dailyRecord) {
-      const selectedExercise = {
-        ExercisePId: exercises?.p
-        Name: string;
-        Weight: number;
-        BodyPartName: string;
-        BodyPart: BodyPart;
-        bodyPartId: exercise?.BodyPart?.bodyPartId,
-        name: exercise?.BodyPartName || ''
-      };
-      setSelectedBodyPart(bodyPart)
-    }*/
+    if (dailyRecord) {
+      const exercise = exercises.find(exercise => exercise.ExercisePId === dailyRecord.ExercisePId);
+      setSelectedExercises(exercise!);
+    }
     onOpen(); // モーダルを開く
   };
 
