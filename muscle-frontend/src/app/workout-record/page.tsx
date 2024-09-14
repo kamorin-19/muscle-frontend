@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Table,
   Thead,
@@ -18,26 +18,59 @@ import {
   ModalCloseButton,
   Button,
   useDisclosure,
+  Input,
+  Select
 } from '@chakra-ui/react';
 
 // WorkoutRecord型の定義
 interface DailyRecord {
-  id: number;
-  enforcementDay: Date;
-  exerciseName: string;
-  firstSetCount: number;
-  secondSetCount: number;
-  thirdSetCount: number;
+  DailyRecordId: number;
+  EnforcementDay: Date | null;
+  ExercisePId: number;
+  Exercise: Exercise | null;
+  FirstSetCount: number;
+  SecondSetCount: number;
+  ThirdSetCount: number;
+  FourthSetCount: number;
+  FifthSetCount: number;
+}
+
+// Exercise型の定義
+interface Exercise {
+  ExercisePId: number;
+  Name: string;
+  Weight: number;
+  BodyPartName: string;
+  BodyPart: BodyPart;
+}
+
+// BodyPart型の定義
+interface BodyPart {
+  BodyPartId: number;
+  Name: string;
 }
 
 export default function WorkoutRecordPage() {
 
   // useStateでdataを管理
   const [data, setData] = useState<DailyRecord[]>([]);
+  // useStateでexercisesを管理
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   // useStateで選択したdataを管理
   const [selectedDailyRecord, setSelectedDailyRecord] = useState<DailyRecord | null>(null);
+  // useStateで選択したdataを管理
+  const [selectedExercises, setSelectedExercises] = useState<Exercise | null>(null);
+  // 作成か更新かを管理するstate
+  const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
+  // エラーメッセージを管理するstate
+  const [errorMessage, setErrorMessage] = useState('');
 
+  // 詳細モーダルを管理
   const { isOpen, onOpen, onClose } = useDisclosure();
+  // エラーモーダルを管理
+  const { isOpen: isDialogOpen, onOpen: openDialog, onClose: closeDialog } = useDisclosure();
+
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // データを取得する関数
@@ -52,34 +85,40 @@ export default function WorkoutRecordPage() {
         //   name: item.name,
         // }));
 
-        const formattedData = [
+        /*const formattedData = [
           {
-            id: 1,
-            enforcementDay: new Date('2024-08-30'),
-            exerciseName: 'バーベルスクワット',
-            firstSetCount: 10,
-            secondSetCount: 11,
-            thirdSetCount: 12,
+            DailyRecordId: 1,
+            EnforcementDay: new Date('2024-08-30'),
+            ExercisePId: 'バーベルスクワット',
+            FirstSetCount: 10,
+            SecondSetCount: 11,
+            ThirdSetCount: 12,
+            FourthSetCount: 13,
+            FifthSetCount: 14,
           },
           {
-            id: 2,
-            enforcementDay: new Date('2024-08-30'),
-            exerciseName: 'ブルガリアンスクワット',
-            firstSetCount: 10,
-            secondSetCount: 11,
-            thirdSetCount: 12,
+            DailyRecordId: 2,
+            EnforcementDay: new Date('2024-08-30'),
+            ExercisePId: 'ブルガリアンスクワット',
+            FirstSetCount: 10,
+            SecondSetCount: 11,
+            ThirdSetCount: 12,
+            FourthSetCount: 13,
+            FifthSetCount: 14,
           },
           {
-            id: 3,
-            enforcementDay: new Date('2024-08-30'),
-            exerciseName: 'ダンベルプレス',
-            firstSetCount: 10,
-            secondSetCount: 11,
-            thirdSetCount: 12,
+            DailyRecordId: 3,
+            EnforcementDay: new Date('2024-08-30'),
+            ExercisePId: 'ダンベルプレス',
+            FirstSetCount: 10,
+            SecondSetCount: 11,
+            ThirdSetCount: 12,
+            FourthSetCount: 13,
+            FifthSetCount: 14,
           },
         ];
 
-        setData(formattedData); // useStateのセッター関数を使用してdataを更新
+        setData(formattedData); // useStateのセッター関数を使用してdataを更新*/
       } catch (error) {
         console.error('データの取得に失敗しました', error);
       }
@@ -89,10 +128,254 @@ export default function WorkoutRecordPage() {
   }, []);
 
   // 行をクリックしたときに呼ばれる関数
-  const handleRowClick = (dailyRecord: DailyRecord) => {
-    setSelectedDailyRecord(dailyRecord); // 選択した行のデータを設定
+  const handleRowClick = async (dailyRecord: DailyRecord | null = null) => {
+    // 種目マスタを取得
+    await fetchExercises();
+    // 選択した行のデータを設定
+    setSelectedDailyRecord(dailyRecord);
+    // 作成か更新かを設定
+    setIsNewRecord(!dailyRecord);
+    /*if (dailyRecord) {
+      const selectedExercise = {
+        ExercisePId: exercises?.p
+        Name: string;
+        Weight: number;
+        BodyPartName: string;
+        BodyPart: BodyPart;
+        bodyPartId: exercise?.BodyPart?.bodyPartId,
+        name: exercise?.BodyPartName || ''
+      };
+      setSelectedBodyPart(bodyPart)
+    }*/
     onOpen(); // モーダルを開く
   };
+
+  // 種目マスタを取得する関数
+  const fetchExercises = async () => {
+    try {
+      const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      }
+      const result = await response.json();
+
+      console.log(result);
+
+      // APIレスポンスからidとnameを抽出してセット
+      const formattedData = result.map((item: { ExercisePId: number; Name: string; weight: number; BodyPart: BodyPart }) => ({
+        ExercisePId: item.ExercisePId,
+        Name: item.Name,
+        Weight: item.weight,
+        BodyPartName: item.BodyPart?.Name || '',
+        BodyPart: item.BodyPart
+      }));
+
+      console.log(formattedData);
+
+      setExercises(formattedData);
+    } catch (error) {
+      console.error('データの取得に失敗しました', error);
+    }
+  }
+
+  // 種目を取得する関数
+  const handleExerciseChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    try {
+      // 選択された種目のidを取得
+      const selectedExerciseId = Number(e.target.value);
+      // 選択された種目のnameを取得
+      const selectedExercise1 = exercises.find(exercise => exercise.ExercisePId === selectedExerciseId);
+      setSelectedExercises(selectedExercise1!);
+      if (selectedDailyRecord) {
+        // 既にデータが設定されているとき
+        setSelectedDailyRecord({
+          ...selectedDailyRecord,
+          Exercise: selectedExercises!,
+        });
+      } else {
+        // まだデータが設定されていないとき
+        setSelectedDailyRecord({
+          DailyRecordId: 1,
+          Exercise: selectedExercises!,
+          ExercisePId: 1,
+          EnforcementDay: null,
+          FirstSetCount: 1,
+          SecondSetCount: 2,
+          ThirdSetCount: 3,
+          FourthSetCount: 4,
+          FifthSetCount: 5,
+        });
+      }
+    } catch (error) {
+      console.error('BodyPartデータの取得に失敗しました', error);
+    }
+  };
+
+  // 日付を変更したときに呼ばれる関数
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = new Date(e.target.value); // YYYY-MM-DD形式の文字列を取得
+    if (selectedDailyRecord) {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        ...selectedDailyRecord,
+        EnforcementDay: newDate,
+      });
+    } else {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        DailyRecordId: 1,
+        Exercise: null,
+        ExercisePId: 1,
+        EnforcementDay: null,
+        FirstSetCount: 1,
+        SecondSetCount: 2,
+        ThirdSetCount: 3,
+        FourthSetCount: 4,
+        FifthSetCount: 5,
+      });
+    }
+  };
+
+  // 1回目のレップスを変更したときに呼ばれる関数
+  const handleFirstSetCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedDailyRecord) {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        ...selectedDailyRecord,
+        FirstSetCount: Number(e.target.value),
+      });
+    } else {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        DailyRecordId: 1,
+        Exercise: null,
+        ExercisePId: 1,
+        EnforcementDay: null,
+        FirstSetCount: 1,
+        SecondSetCount: 2,
+        ThirdSetCount: 3,
+        FourthSetCount: 4,
+        FifthSetCount: 5,
+      });
+    }
+  };
+
+  // 2回目のレップスを変更したときに呼ばれる関数
+  const handleSecondSetCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedDailyRecord) {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        ...selectedDailyRecord,
+        SecondSetCount: Number(e.target.value),
+      });
+    } else {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        DailyRecordId: 1,
+        Exercise: null,
+        ExercisePId: 0,
+        EnforcementDay: null,
+        FirstSetCount: 0,
+        SecondSetCount: Number(e.target.value),
+        ThirdSetCount: 0,
+        FourthSetCount: 0,
+        FifthSetCount: 0,
+      });
+    }
+  };
+
+  // 3回目のレップスを変更したときに呼ばれる関数
+  const handleThirdSetCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedDailyRecord) {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        ...selectedDailyRecord,
+        ThirdSetCount: Number(e.target.value),
+      });
+    } else {
+      // 既にデータが設定されているとき
+      setSelectedDailyRecord({
+        DailyRecordId: 0,
+        Exercise: null,
+        ExercisePId: 0,
+        EnforcementDay: null,
+        FirstSetCount: 0,
+        SecondSetCount: 0,
+        ThirdSetCount: Number(e.target.value),
+        FourthSetCount: 0,
+        FifthSetCount: 0,
+      });
+    }
+  };
+
+  // 情報作成のリクエストを投げる
+  const createDailyRecord = useCallback(async () => {
+    try {
+      // DateオブジェクトをDateOnly型（YYYY-MM-DD形式）に変換
+      console.log(JSON.stringify(selectedDailyRecord))
+      const payload = {
+        ...selectedDailyRecord,
+        EnforcementDay: selectedDailyRecord?.EnforcementDay
+          ? new Date(selectedDailyRecord.EnforcementDay).toISOString().split('T')[0]
+          : null,
+      };
+      console.log(JSON.stringify(payload))
+      const response = await fetch('https://localhost:7253/DailyRecord/AddDailyRecord', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // サーバーがエラーを返した場合は、ここでエラーチェック
+      /*if (!response.ok) {
+        // サーバーのエラーメッセージを取得
+        const errorMessage = await response.text();
+        // 新たなエラーを投げる
+        throw new Error(errorMessage);
+      } else {
+        // データを取得する関数
+        const fetchData = async () => {
+          try {
+            const response = await fetch('https://localhost:7253/DailyWeight/GetDailyWeight');
+
+            // サーバーがエラーを返した場合は、ここでエラーチェック
+            if (!response.ok) {
+              // サーバーのエラーメッセージを取得
+              const errorMessage = await response.text();
+              // 新たなエラーを投げる
+              throw new Error(errorMessage);
+            }
+            const result = await response.json();
+
+            // APIレスポンスからidとnameを抽出してセット
+            const formattedData = result.map((item: { dailyWeightId: number; recordedDay: Date; weight: number; }) => ({
+              DailyWeightId: item.dailyWeightId,
+              RecordedDay: item.recordedDay,
+              Weight: item.weight,
+            }));
+
+            setData(formattedData); // useStateのセッター関数を使用してdataを更新
+            onClose();
+          } catch (error: any) {
+            setErrorMessage(error.message);
+            openDialog();
+          }
+        };
+
+        fetchData();
+      }*/
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }, [selectedDailyRecord]);
 
   return (
     <>
@@ -100,27 +383,28 @@ export default function WorkoutRecordPage() {
         <Table variant="simple">
           <Thead>
             <Tr>
-              <Th>id</Th>
-              <Th>enforcementDay</Th>
-              <Th>exerciseName</Th>
-              <Th>firstSetCount</Th>
-              <Th>secondSetCount</Th>
-              <Th>thirdSetCount</Th>
+              <Th>EnforcementDay</Th>
+              <Th>ExercisePId</Th>
+              <Th>FirstSetCount</Th>
+              <Th>SecondSetCount</Th>
+              <Th>ThirdSetCount</Th>
             </Tr>
           </Thead>
           <Tbody>
             {data.map((item) => (
-              <Tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
-                <Td>{item.id}</Td>
-                <Td>{item.enforcementDay.toDateString()}</Td>
-                <Td>{item.exerciseName}</Td>
-                <Td>{item.firstSetCount}</Td>
-                <Td>{item.secondSetCount}</Td>
-                <Td>{item.thirdSetCount}</Td>
+              <Tr key={item.DailyRecordId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
+                <Td>{item.EnforcementDay ? new Date(item.EnforcementDay).toISOString().split('T')[0] : ''}</Td>
+                <Td>{item.Exercise?.Name}</Td>
+                <Td>{item.FirstSetCount}</Td>
+                <Td>{item.SecondSetCount}</Td>
+                <Td>{item.ThirdSetCount}</Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
+        <Button mt={4} colorScheme="teal" onClick={() => handleRowClick()} style={{ cursor: 'pointer' }}>
+          追加
+        </Button>
       </TableContainer>
       {/* モーダル */}
       <Modal isOpen={isOpen} onClose={onClose}>
@@ -129,18 +413,60 @@ export default function WorkoutRecordPage() {
           <ModalHeader>選択した日々記録の詳細</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            {selectedDailyRecord && (
-              <>
-                <p><strong>ID:</strong> {selectedDailyRecord.id}</p>
-                <p><strong>EnforcementDay:</strong> {selectedDailyRecord.enforcementDay.toDateString()}</p>
-                <p><strong>ExerciseName:</strong> {selectedDailyRecord.exerciseName}</p>
-                <p><strong>FirstSetCount:</strong> {selectedDailyRecord.id}</p>
-                <p><strong>SecondSetCount:</strong> {selectedDailyRecord.secondSetCount}</p>
-                <p><strong>ThirdSetCount:</strong> {selectedDailyRecord.thirdSetCount}</p>
-              </>
-            )}
+            <Input
+              type="date"
+              placeholder="date"
+              value={selectedDailyRecord?.EnforcementDay ? new Date(selectedDailyRecord.EnforcementDay).toISOString().split('T')[0] : ''}
+              onChange={handleDateChange}
+            />
+            <br />
+            {/* コンボボックス */}
+            <Select
+              placeholder="Select "
+              value={selectedDailyRecord?.Exercise?.Name ? selectedDailyRecord?.Exercise?.Name : ''}
+              onChange={handleExerciseChange}
+            >
+              {exercises.length > 0 ? (
+                exercises.map((exercise) => (
+                  <option key={exercise.ExercisePId} value={exercise.ExercisePId}>
+                    {exercise.Name}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Loading...</option>
+              )}
+            </Select>
+            <br />
+            <Input
+              type="number"
+              placeholder="FirstSetCount"
+              value={selectedDailyRecord ? selectedDailyRecord.FifthSetCount : 0}
+              onChange={handleFirstSetCountChange}
+            />
+            <br />
+            <Input
+              type="number"
+              placeholder="SecondSetCount"
+              value={selectedDailyRecord ? selectedDailyRecord.SecondSetCount : 0}
+              onChange={handleSecondSetCountChange}
+            />
+            <br />
+            <Input
+              type="number"
+              placeholder="ThirdSetCount"
+              value={selectedDailyRecord ? selectedDailyRecord.ThirdSetCount : 0}
+              onChange={handleThirdSetCountChange}
+            />
           </ModalBody>
           <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createDailyRecord() : console.log(2) }}>
+              {isNewRecord ? '作成' : '更新'}
+            </Button>
+            {isNewRecord ? null :
+              <Button colorScheme="blue" mr={3} onClick={() => { console.log(3) }}>
+                削除
+              </Button>
+            }
             <Button colorScheme="blue" mr={3} onClick={onClose}>
               閉じる
             </Button>
