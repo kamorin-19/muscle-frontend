@@ -24,6 +24,15 @@ import {
 
 import { useState } from 'react';
 
+// 取込データの定義
+interface ImportRecord {
+  EnforcementDay: Date;
+  ExerciseName: string;
+  FirstSetCount: number;
+  SecondSetCount: number;
+  ThirdSetCount: number;
+}
+
 export default function ImportCsvPage() {
 
   // stateとtoastの初期化
@@ -79,11 +88,90 @@ export default function ImportCsvPage() {
       }
 
       // CSVデータを状態に保存
-      setCsvData(rows); 
+      setCsvData(rows);
     }
 
     // 文字コードUTF-8でファイルを読み込み
     reader.readAsText(file, 'UTF-8');
+  }
+
+  // 取り込んだCSVデータを日々の記録に登録する
+  const createDailyRecords = async () => {
+
+    // CSVのヘッダーを除いた部分を取得
+    const formattedData = csvData.slice(1).map((row) => ({
+      EnforcementDay: new Date(row[0]).toISOString().split('T')[0],
+      ExerciseName: row[1],
+      FirstSetCount: parseInt(row[2]),
+      SecondSetCount: parseInt(row[3]),
+      ThirdSetCount: parseInt(row[4]),
+    }));
+    
+    for (let i = 0; i < formattedData.length; i++) {
+
+      console.log(JSON.stringify(formattedData[i]))
+      try {
+        const response = await fetch('https://localhost:7253/ImportCsv/AddDailyRecords', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formattedData[i]), // JSON形式に変換して送信
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to send data');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+
+/*console.log(JSON.stringify(formattedData))
+    try {
+      const response = await fetch('https://localhost:7253/ImportCsv/AddDailyRecords', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData), // JSON形式に変換して送信
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send data');
+      }
+    } catch (e) {
+      console.error(e);
+    }*/
+    /*const records = csvData.slice(1).map(async (row) => {
+      const record: ImportRecord = {
+        EnforcementDay: new Date(row[0]),
+        ExerciseName: row[1],
+        FirstSetCount: parseInt(row[2]),
+        SecondSetCount: parseInt(row[3]),
+        ThirdSetCount: parseInt(row[4]),
+      };
+    }*/
+
+    /* try {
+
+       const response = await fetch('/api/upload', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(records), // JSON形式に変換して送信
+       });
+ 
+       if (!response.ok) {
+         throw new Error('Failed to send data');
+       }
+
+     } catch (e) {
+       console.error(e);
+     }
+   });*/
   }
 
   return (
@@ -93,6 +181,9 @@ export default function ImportCsvPage() {
         <br />
         <Button mt={4} colorScheme="teal" onClick={() => handleDowdloadTemplate()} style={{ cursor: 'pointer' }}>
           テンプレートダウンロード
+        </Button>
+        <Button ml={4} colorScheme="teal" onClick={() => createDailyRecords()} style={{ cursor: 'pointer' }}>
+          登録
         </Button>
         <br />
         <Table mt={4} variant="simple">
