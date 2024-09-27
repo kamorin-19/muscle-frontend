@@ -6,7 +6,6 @@ export default function Home() {
   return (
     <ChakraProvider>
       <Box mt={4} p={4}>
-        <p>メインページのコンテンツ</p>
       </Box>
     </ChakraProvider>
   );

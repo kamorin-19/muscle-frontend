@@ -9,12 +9,11 @@ export const CustomMenu = () => {
         メニュー
       </MenuButton>
       <MenuList>
-        <MenuItem as={Link} href="/home">ホーム</MenuItem>
-        <MenuItem as={Link} href="/workout-record">筋トレ記録</MenuItem>
-        <MenuItem as={Link} href="/weight-record">体重記録</MenuItem>
-        <MenuItem as={Link} href="/exercise-master">種目マスタ</MenuItem>
-        <MenuItem as={Link} href="/body-part-master">部位マスタ</MenuItem>
-        <MenuItem as={Link} href="/import-csv">CSV取込</MenuItem>
+        <MenuItem as={Link} href="/templates/workout-record">筋トレ記録</MenuItem>
+        <MenuItem as={Link} href="/templates/weight-record">体重記録</MenuItem>
+        <MenuItem as={Link} href="/templates/exercise-master">種目マスタ</MenuItem>
+        <MenuItem as={Link} href="/templates/body-part-master">部位マスタ</MenuItem>
+        <MenuItem as={Link} href="/templates/import-csv">CSV取込</MenuItem>
       </MenuList>
     </Menu>
   );
