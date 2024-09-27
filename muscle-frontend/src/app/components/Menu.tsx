@@ -5,7 +5,7 @@ import Link from 'next/link';
 export const CustomMenu = () => {
   return (
     <Menu>
-      <MenuButton as={Button} rightIcon={<ChevronDownIcon />} bg="teal.400" color="white" _hover={{ bg: "teal.500" }}>
+      <MenuButton as={Button} bg="teal.400" color="white" _hover={{ bg: "teal.500" }}>
         メニュー
       </MenuButton>
       <MenuList>

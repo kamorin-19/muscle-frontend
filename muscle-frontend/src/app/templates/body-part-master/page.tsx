@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, use } from 'react';
 import {
   AlertDialog,
   AlertDialogOverlay,
@@ -8,13 +8,8 @@ import {
   AlertDialogHeader,
   AlertDialogBody,
   AlertDialogFooter,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
+  Button,
+  Input,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -22,9 +17,14 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  Button,
+  Table,
+  TableContainer,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
   useDisclosure,
-  Input
 } from '@chakra-ui/react';
 
 // BodyPart型の定義
@@ -35,15 +35,17 @@ interface BodyPart {
 
 export default function BodyPartMasterPage() {
 
-  // useStateでdataを管理
-  const [data, setData] = useState<BodyPart[]>([]);
-  // useStateで選択したdataを管理
+  // state定義
+  // 部位一覧を管理
+  const [bodyPartList, setBodyPartList] = useState<BodyPart[]>([]);
+  // 選択した部位を管理
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
-  // 作成か更新かを管理するstate
+  // 作成か更新かを管理
   const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
-  // エラーメッセージを管理するstate
+  // エラーメッセージを管理
   const [errorMessage, setErrorMessage] = useState('');
 
+  // モーダル管理
   // 詳細モーダルを管理
   const { isOpen, onOpen, onClose } = useDisclosure();
   // エラーモーダルを管理
@@ -51,204 +53,81 @@ export default function BodyPartMasterPage() {
 
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
+  // 関数定義
+  // データ処理関連
+  // 部位マスタ取得関数
+  const fetchBodyParts = async () => {
+    try {
 
-        // サーバーがエラーを返した場合は、ここでエラーチェック
-        if (!response.ok) {
-          // サーバーのエラーメッセージを取得
-          const errorMessage = await response.text();
-          // 新たなエラーを投げる
-          throw new Error(errorMessage);
-        }
-        const result = await response.json();
+      const apiUrl = new URL(process.env.NEXT_PUBLIC_FETCH_BODYPARTS_URL!);
+      const response = await fetch(apiUrl);
 
-        // APIレスポンスからidとnameを抽出してセット
-        const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-          BodyPartId: item.bodyPartId,
-          Name: item.name,
-        }));
-
-        setData(formattedData); // useStateのセッター関数を使用してdataを更新
-      } catch (error: any) {
-        setErrorMessage(error.message);
-        openDialog();
+      if (!response.ok) {
+        // レスポンスがエラーの場合
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
       }
-    };
 
-    fetchData();
-  }, []);
+      const result = await response.json();
 
+      // 部位マスタの一覧をセット
+      const bodyParts = result.map((item: { BodyPartId: number; Name: string }) => ({
+        BodyPartId: item.BodyPartId,
+        Name: item.Name,
+      }));
+
+      setBodyPartList(bodyParts);
+
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  };
+
+  // 部位マスタ更新関数
+  const updateBodyPart = async (url: string) => {
+    try {
+      const apiUrl = new URL(url);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedBodyPart),
+      });
+
+      if (!response.ok) {
+        // レスポンスがエラーの場合
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
+      }
+
+      // データを作成できたら詳細ダイアログを閉じる
+      onClose();
+      // 部位マスタを再取得
+      fetchBodyParts();
+
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  };
+
+  // データ処理以外の関数
   // 行をクリックしたときに呼ばれる関数
-  const handleRowClick = useCallback((bodyPart: BodyPart | null = null) => {
+  const handleRowClick = (bodyPart: BodyPart | null = null) => {
     // 選択した行のデータを設定
     setSelectedBodyPart(bodyPart);
     // 作成か更新かを設定
     setIsNewRecord(!bodyPart);
-    // モーダルを開く
+    // 詳細モーダルを開く
     onOpen();
-  }, [onOpen]);
+  };
 
-  // マスタ作成のリクエストを投げる
-  const createBodyPart = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/BodyPart/AddBodyParts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedBodyPart),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-              BodyPartId: item.bodyPartId,
-              Name: item.name,
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedBodyPart]);
-
-  // マスタ更新のリクエストを投げる
-  const updateBodyPart = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/BodyPart/UpdateBodyParts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedBodyPart),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-              BodyPartId: item.bodyPartId,
-              Name: item.name,
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedBodyPart]);
-
-  // マスタ削除のリクエストを投げる
-  const deleteBodyPart = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/BodyPart/DeleteBodyParts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedBodyPart),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-              BodyPartId: item.bodyPartId,
-              Name: item.name,
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedBodyPart]);
+  // 初期表示
+  useEffect(() => {
+    fetchBodyParts();
+  }, []);
 
   return (
     <>
@@ -260,7 +139,7 @@ export default function BodyPartMasterPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {data.map((item) => (
+            {bodyPartList.map((item) => (
               <Tr key={item.BodyPartId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
                 <Td>{item.Name}</Td>
               </Tr>
@@ -295,11 +174,11 @@ export default function BodyPartMasterPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createBodyPart() : updateBodyPart() }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? updateBodyPart(process.env.NEXT_PUBLIC_CREATE_BODYPART_URL!) : updateBodyPart(process.env.NEXT_PUBLIC_UPDATE_BODYPART_URL!) }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
-              <Button colorScheme="blue" mr={3} onClick={() => { deleteBodyPart() }}>
+              <Button colorScheme="blue" mr={3} onClick={() => { updateBodyPart(process.env.NEXT_PUBLIC_DELETE_BODYPART_URL!) }}>
                 削除
               </Button>
             }
