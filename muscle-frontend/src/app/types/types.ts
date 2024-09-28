@@ -6,6 +6,15 @@ export interface BodyPart {
   Name: string;
 }
 
+// Exercise型の定義
+export interface Exercise {
+    ExercisePId: number;
+    Name: string;
+    Weight: number | string;
+    BodyPartName: string;
+    BodyPart: BodyPart;
+}
+
 // エラーモーダルの型定義
 export interface ErrorModalProps {
     isOpen: boolean;

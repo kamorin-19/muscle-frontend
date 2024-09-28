@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
-  AlertDialog,
-  AlertDialogOverlay,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogBody,
-  AlertDialogFooter,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
+  Button,
+  Flex,
+  FormLabel,
+  Input,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -22,42 +13,37 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  Button,
+  Select,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
   useDisclosure,
-  Input,
-  Select
 } from '@chakra-ui/react';
 
-// Exercise型の定義
-interface Exercise {
-  ExercisePId: number;
-  Name: string;
-  Weight: number;
-  BodyPartName: string;
-  BodyPart: BodyPart;
-}
-
-// BodyPart型の定義
-interface BodyPart {
-  bodyPartId: number;
-  name: string;
-}
+import { BodyPart, Exercise } from '@/app/types/types';
+import ErrorModal from '@/app/components/ErrorModal';
 
 export default function ExerciseMasterPage() {
 
-  // useStateでdataを管理
-  const [data, setData] = useState<Exercise[]>([]);
-  // useStateでbodyPartsを管理
+  // state定義
+  // 種目一覧を管理
+  const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
+  // 部位一覧を管理
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([]);
-  // useStateで選択したdataを管理
+  // 選択した種目を管理
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-  // useStateで選択したdataを管理
+  // 選択した部位を管理
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
-  // 作成か更新かを管理するstate
+  // 作成か更新かを管理
   const [isNewRecord, setIsNewRecord] = useState<boolean>(true);
-  // エラーメッセージを管理するstate
+  // エラーメッセージを管理
   const [errorMessage, setErrorMessage] = useState('');
 
+  // モーダル管理
   // 詳細モーダルを管理
   const { isOpen, onOpen, onClose } = useDisclosure();
   // エラーモーダルを管理
@@ -65,81 +51,127 @@ export default function ExerciseMasterPage() {
 
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    // データを取得する関数
-    const fetchData = async () => {
-      try {
-        const response = await fetch('https://localhost:7253/Exercise/GetExercises');
+  // 関数定義
+  // データ処理関連
+  // 種目マスタ取得関数
+  const fetchExercises = async () => {
+    try {
 
-        // サーバーがエラーを返した場合は、ここでエラーチェック
-        if (!response.ok) {
-          // サーバーのエラーメッセージを取得
-          const errorMessage = await response.text();
-          // 新たなエラーを投げる
-          throw new Error(errorMessage);
-        }
-        const result = await response.json();
+      const apiUrl = new URL(process.env.NEXT_PUBLIC_FETCH_EXERCISES_URL!);
+      const response = await fetch(apiUrl);
 
-        // APIレスポンスからidとnameを抽出してセット
-        const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
-          ExercisePId: item.exercisePId,
-          Name: item.name,
-          Weight: item.weight,
-          BodyPartName: item.bodyPart?.name || '',
-          BodyPart: item.bodyPart
-        }));
-
-        setData(formattedData); // useStateのセッター関数を使用してdataを更新
-      } catch (error) {
-        console.error('データの取得に失敗しました', error);
+      if (!response.ok) {
+        // レスポンスがエラーの場合
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
       }
-    };
 
-    fetchData();
+      const result = await response.json();
+
+      // APIレスポンスからidとnameを抽出してセット
+      const exercises = result.map((item: { ExercisePId: number; Name: string; Weight: number; BodyPart: BodyPart }) => ({
+        ExercisePId: item.ExercisePId,
+        Name: item.Name,
+        Weight: item.Weight,
+        BodyPartName: item.BodyPart?.Name || '',
+        BodyPart: item.BodyPart
+      }));
+
+      setExerciseList(exercises);
+
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }
+
+  // 種目マスタ更新関数
+  const updateExercises = async (url: string) => {
+    try {
+
+      const apiUrl = new URL(url);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedExercise),
+      });
+
+      if (!response.ok) {
+        // レスポンスがエラーの場合
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
+      }
+
+      // データを作成できたら詳細ダイアログを閉じる
+      onClose();
+      // 種目マスタを再取得
+      fetchExercises();
+
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  }
+
+  // 部位マスタ取得関数
+  const fetchBodyParts = async () => {
+    try {
+      const apiUrl = new URL(process.env.NEXT_PUBLIC_FETCH_BODYPARTS_URL!);
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        // レスポンスがエラーの場合
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      // 部位マスタの一覧をセット
+      const bodyParts = result.map((item: { BodyPartId: number; Name: string }) => ({
+        BodyPartId: item.BodyPartId,
+        Name: item.Name,
+      }));
+
+      setBodyParts(bodyParts);
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      openDialog();
+    }
+  };
+
+  // データ処理以外の関数
+  // 初期表示
+  useEffect(() => {
+    fetchExercises();
   }, []);
 
   // 行をクリックしたときに呼ばれる関数
   const handleRowClick = async (exercise: Exercise | null = null) => {
-    // BodyPartデータを取得
+    // 部位マスタを取得してリストボックスにセット
     await fetchBodyParts();
     // 選択した行のデータを設定
     setSelectedExercise(exercise);
     // 作成か更新かを設定
     setIsNewRecord(!exercise);
     if (exercise) {
+      // 更新の場合、部位を選択
       const bodyPart = {
-        bodyPartId: exercise?.BodyPart?.bodyPartId,
-        name: exercise?.BodyPartName || ''
+        BodyPartId: exercise?.BodyPart?.BodyPartId,
+        Name: exercise?.BodyPartName || ''
       };
       setSelectedBodyPart(bodyPart)
     }
-    onOpen(); // モーダルを開く
-  };
-
-  // BodyPartデータを取得する関数
-  const fetchBodyParts = async () => {
-    try {
-      const response = await fetch('https://localhost:7253/BodyPart/GetBodyParts');
-
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        throw new Error(errorMessage);
-      }
-      const result = await response.json();
-
-      // APIレスポンスからidとnameを抽出してセット
-      const formattedData = result.map((item: { bodyPartId: number; name: string }) => ({
-        bodyPartId: item.bodyPartId,
-        name: item.name,
-      }));
-      setBodyParts(formattedData);
-    } catch (error) {
-      console.error('BodyPartデータの取得に失敗しました', error);
-    }
+    // 詳細モーダルを開く
+    onOpen();
   };
 
   // 種目名の変更を検知するイベント
   const handleExerciseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("種目変更")
+    console.log(selectedExercise)
     if (selectedExercise) {
       setSelectedExercise({
         ...selectedExercise,
@@ -149,221 +181,59 @@ export default function ExerciseMasterPage() {
       setSelectedExercise({
         ExercisePId: 0,
         Name: e.target.value,
-        Weight: 0,
+        Weight: '',
         BodyPartName: '',
-        BodyPart: { bodyPartId: 0, name: '' }
+        BodyPart: { BodyPartId: 0, Name: '' }
       });
     }
   };
 
   // 重みの変更を検知するイベント
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    console.log("重み変更")
+    console.log(selectedExercise)
+
     if (selectedExercise) {
       setSelectedExercise({
         ...selectedExercise,
-        Weight: Number(e.target.value),
+        Weight: inputValue,
       });
     } else {
       setSelectedExercise({
         ExercisePId: 0,
         Name: '',
-        Weight: Number(e.target.value),
+        Weight: inputValue,
         BodyPartName: '',
-        BodyPart: { bodyPartId: 0, name: '' }
+        BodyPart: { BodyPartId: 0, Name: '' }
       });
     }
   };
 
-  // BodyPartの選択を処理する関数
+  // 部位の変更を検知するイベント
   const handleBodyPartChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     // 選択されたBodyPartのidを取得
     const selectedBodyPartId = Number(e.target.value);
     // 選択されたBodyPartのnameを取得
-    const selectedBodyPartName = bodyParts.find(part => part.bodyPartId === selectedBodyPartId)?.name || '';
+    const selectedBodyPartName = bodyParts.find(part => part.BodyPartId === selectedBodyPartId)?.Name || '';
+    console.log("部位変更")
+    console.log(selectedExercise)
     if (selectedExercise) {
-      console.log(1)
-      console.log(e.target.value)
       setSelectedExercise({
         ...selectedExercise,
-        BodyPart: { bodyPartId: selectedBodyPartId, name: selectedBodyPartName }
+        BodyPartName: selectedBodyPartName,
+        BodyPart: { BodyPartId: selectedBodyPartId, Name: selectedBodyPartName }
       });
     } else {
       setSelectedExercise({
         ExercisePId: 0,
         Name: '',
-        Weight: 0,
+        Weight: '',
         BodyPartName: selectedBodyPartName,
-        BodyPart: { bodyPartId: selectedBodyPartId, name: selectedBodyPartName }
+        BodyPart: { BodyPartId: selectedBodyPartId, Name: selectedBodyPartName }
       });
     }
   };
-
-  // マスタ作成のリクエストを投げる
-  const createExcercise = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/Exercise/AddExercise', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedExercise),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
-              ExercisePId: item.exercisePId,
-              Name: item.name,
-              Weight: item.weight,
-              BodyPartName: item.bodyPart?.name || '',
-              BodyPart: item.bodyPart
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedExercise]);
-
-  // マスタ更新のリクエストを投げる
-  const updateExercise = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/Exercise/UpdateExercise', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedExercise),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: BodyPart }) => ({
-              ExercisePId: item.exercisePId,
-              Name: item.name,
-              Weight: item.weight,
-              BodyPartName: item.bodyPart?.name || '',
-              BodyPart: item.bodyPart
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedExercise]);
-
-  // マスタ削除のリクエストを投げる
-  const deleteExercise = useCallback(async () => {
-    try {
-      const response = await fetch('https://localhost:7253/Exercise/DeleteExercise', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedExercise),
-      });
-
-      // サーバーがエラーを返した場合は、ここでエラーチェック
-      if (!response.ok) {
-        // サーバーのエラーメッセージを取得
-        const errorMessage = await response.text();
-        // 新たなエラーを投げる
-        throw new Error(errorMessage);
-      } else {
-        const fetchData = async () => {
-          try {
-            const response = await fetch('https://localhost:7253/Exercise/GetExercises');
-
-            // サーバーがエラーを返した場合は、ここでエラーチェック
-            if (!response.ok) {
-              // サーバーのエラーメッセージを取得
-              const errorMessage = await response.text();
-              // 新たなエラーを投げる
-              throw new Error(errorMessage);
-            }
-            const result = await response.json();
-
-            // APIレスポンスからidとnameを抽出してセット
-            const formattedData = result.map((item: { exercisePId: number; name: string; weight: number; bodyPart: { name: string } }) => ({
-              ExercisePId: item.exercisePId,
-              Name: item.name,
-              Weight: item.weight,
-              BodyPartName: item.bodyPart?.name || ''
-            }));
-
-            setData(formattedData); // useStateのセッター関数を使用してdataを更新
-            onClose();
-          } catch (error: any) {
-            setErrorMessage(error.message);
-            openDialog();
-          }
-        };
-
-        fetchData();
-      }
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      openDialog();
-    }
-  }, [selectedExercise]);
 
   return (
     <>
@@ -377,7 +247,7 @@ export default function ExerciseMasterPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {data.map((item) => (
+            {exerciseList.map((item) => (
               <Tr key={item.ExercisePId} onClick={() => handleRowClick(item)} style={{ cursor: 'pointer' }}>
                 <Td>{item.Name}</Td>
                 <Td>{item.Weight}</Td>
@@ -398,41 +268,54 @@ export default function ExerciseMasterPage() {
           <ModalHeader>選択した種目の詳細</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            {/* selectedBodyPartが設定されている場合はそのnameを表示し、そうでなければnullを表示する */}
-            <Input
-              placeholder="Exercise Name"
-              value={selectedExercise ? selectedExercise.Name : ''}
-              onChange={handleExerciseChange}
-            />
-            <br />
-            <Input
-              placeholder="Weight"
-              value={selectedExercise ? selectedExercise.Weight : 0}
-              onChange={handleWeightChange}
-            />
-            {/* コンボボックス */}
-            <Select
-              placeholder="Select Body Part"
-              value={selectedExercise?.BodyPartName || ''}
-              onChange={handleBodyPartChange}
-            >
-              {bodyParts.length > 0 ? (
-                bodyParts.map((part) => (
-                  <option key={part.bodyPartId} value={part.bodyPartId}>
-                    {part.name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Loading...</option>
-              )}
-            </Select>
+            <Flex mt={4} direction="row" alignItems="center">
+              <FormLabel minWidth="100px" marginRight="8px">
+                種目名
+              </FormLabel>
+              <Input
+                placeholder="Exercise Name"
+                value={selectedExercise ? selectedExercise.Name : ''}
+                onChange={handleExerciseChange}
+              />
+            </Flex>
+            <Flex mt={4} direction="row" alignItems="center">
+              <FormLabel minWidth="100px" marginRight="8px">
+                重み
+              </FormLabel>
+              <Input
+                type="text"
+                placeholder="Weight"
+                value={selectedExercise ? selectedExercise.Weight : ''}
+                onChange={handleWeightChange}
+              />
+            </Flex>
+            <Flex mt={4} direction="row" alignItems="center">
+              <FormLabel minWidth="100px" marginRight="8px">
+                部位
+              </FormLabel>
+              <Select
+                placeholder="Select Body Part"
+                value={selectedExercise?.BodyPart?.BodyPartId || ''}
+                onChange={handleBodyPartChange}
+              >
+                {bodyParts.length > 0 ? (
+                  bodyParts.map((part) => (
+                    <option key={part.BodyPartId} value={part.BodyPartId}>
+                      {part.Name}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Loading...</option>
+                )}
+              </Select>
+            </Flex>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? createExcercise() : updateExercise() }}>
+            <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? updateExercises(process.env.NEXT_PUBLIC_CREATE_EXERCISE_URL!) : updateExercises(process.env.NEXT_PUBLIC_UPDATE_EXERCISE_URL!) }}>
               {isNewRecord ? '作成' : '更新'}
             </Button>
             {isNewRecord ? null :
-              <Button colorScheme="blue" mr={3} onClick={() => { deleteExercise() }}>
+              <Button colorScheme="blue" mr={3} onClick={() => { updateExercises(process.env.NEXT_PUBLIC_DELETE_EXERCISE_URL!) }}>
                 削除
               </Button>
             }
@@ -444,29 +327,12 @@ export default function ExerciseMasterPage() {
       </Modal>
 
       {/* エラーモーダル */}
-      <AlertDialog
-        isOpen={isDialogOpen} // 変更された変数名を使用
-        leastDestructiveRef={cancelRef}
-        onClose={closeDialog} // 変更された変数名を使用
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              エラー
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              {errorMessage}
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={closeDialog}> {/* 変更された変数名を使用 */}
-                閉じる
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+      < ErrorModal
+        isOpen={isDialogOpen}
+        onClose={closeDialog}
+        errorMessage={errorMessage}
+        cancelRef={cancelRef}
+      />
     </>
   );
 }
