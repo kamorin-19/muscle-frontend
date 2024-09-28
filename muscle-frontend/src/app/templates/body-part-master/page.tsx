@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, use } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
-  AlertDialog,
-  AlertDialogOverlay,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogBody,
-  AlertDialogFooter,
   Button,
+  Flex,
+  FormLabel,
   Input,
   Modal,
   ModalOverlay,
@@ -27,11 +23,8 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 
-// BodyPart型の定義
-interface BodyPart {
-  BodyPartId: number;
-  Name: string;
-}
+import { BodyPart } from '@/app/types/types';
+import ErrorModal from '@/app/components/ErrorModal';
 
 export default function BodyPartMasterPage() {
 
@@ -114,6 +107,11 @@ export default function BodyPartMasterPage() {
   };
 
   // データ処理以外の関数
+  // 初期表示
+  useEffect(() => {
+    fetchBodyParts();
+  }, []);
+
   // 行をクリックしたときに呼ばれる関数
   const handleRowClick = (bodyPart: BodyPart | null = null) => {
     // 選択した行のデータを設定
@@ -124,10 +122,17 @@ export default function BodyPartMasterPage() {
     onOpen();
   };
 
-  // 初期表示
-  useEffect(() => {
-    fetchBodyParts();
-  }, []);
+  // 選択した部位が変更されたときに呼ばれる関数
+  const selectdBodyPartChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // selectedBodyPartがnullでない場合はそのnameを更新
+    if (selectedBodyPart) {
+      setSelectedBodyPart({ ...selectedBodyPart, Name: e.target.value });
+    } else {
+      // nullの場合、IDに0を設定して新しいオブジェクトを作成
+      setSelectedBodyPart({ BodyPartId: 0, Name: e.target.value });
+    }
+  }
+
 
   return (
     <>
@@ -158,20 +163,16 @@ export default function BodyPartMasterPage() {
           <ModalHeader>{isNewRecord ? '部位マスタ作成' : '部位マスタ更新'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            {/* selectedBodyPartが設定されている場合はそのnameを表示し、そうでなければnullを表示する */}
-            <Input
-              placeholder="Body Part Name"
-              value={selectedBodyPart ? selectedBodyPart.Name : ''}
-              onChange={(e) => {
-                // selectedBodyPartがnullでない場合はそのnameを更新
-                if (selectedBodyPart) {
-                  setSelectedBodyPart({ ...selectedBodyPart, Name: e.target.value });
-                } else {
-                  // nullの場合、IDに0を設定して新しいオブジェクトを作成
-                  setSelectedBodyPart({ BodyPartId: 0, Name: e.target.value });
-                }
-              }}
-            />
+            <Flex direction="row" alignItems="center">
+              <FormLabel minWidth="100px" marginRight="8px">
+                部位名
+              </FormLabel>
+              <Input
+                placeholder="Body Part Name"
+                value={selectedBodyPart ? selectedBodyPart.Name : ''}
+                onChange={selectdBodyPartChanged}
+              />
+            </Flex>
           </ModalBody>
           <ModalFooter>
             <Button colorScheme="blue" mr={3} onClick={() => { isNewRecord ? updateBodyPart(process.env.NEXT_PUBLIC_CREATE_BODYPART_URL!) : updateBodyPart(process.env.NEXT_PUBLIC_UPDATE_BODYPART_URL!) }}>
@@ -187,32 +188,15 @@ export default function BodyPartMasterPage() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </Modal >
 
       {/* エラーモーダル */}
-      <AlertDialog
-        isOpen={isDialogOpen} // 変更された変数名を使用
-        leastDestructiveRef={cancelRef}
-        onClose={closeDialog} // 変更された変数名を使用
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              エラー
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              {errorMessage}
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={closeDialog}> {/* 変更された変数名を使用 */}
-                閉じる
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+      < ErrorModal
+        isOpen={isDialogOpen}
+        onClose={closeDialog}
+        errorMessage={errorMessage}
+        cancelRef={cancelRef}
+      />
     </>
   );
 }
